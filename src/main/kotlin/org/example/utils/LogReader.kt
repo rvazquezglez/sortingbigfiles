@@ -18,15 +18,15 @@ class LogReader {
 
     private fun partitionInChunks(inputDirectory: String, outputDirectory: String) {
         val charset = Charsets.UTF_8
-        val maxFileSizeInBytes = 300
+        val maxFileSizeInBytes = 3000
 
+        var numFiles = 0
         File(inputDirectory).walk()
             .filter { it.isFile }
             .forEach {
                 val bufferedFileReader = BufferedReader(FileReader(it))
                 bufferedFileReader.use {
                     var readLine: String? = bufferedFileReader.readLine()
-                    var numFiles = 0
                     while (readLine != null) {
                         val outputChunkFile = OutputStreamWriter(
                             FileOutputStream("$outputDirectory/output_chunk_$numFiles.log"),
@@ -35,11 +35,15 @@ class LogReader {
                         var currentFileSizeInBytes = 0
                         outputChunkFile.use {
                             while (currentFileSizeInBytes < maxFileSizeInBytes && readLine != null) {
-                                outputChunkFile.appendln(readLine)
-                                readLine = bufferedFileReader.readLine()
-                                if (readLine != null) {
-                                    currentFileSizeInBytes += readLine!!.toByteArray(charset).size
+                                var lineToAppend: String = if (currentFileSizeInBytes == 0) {
+                                    readLine!!
+                                } else {
+                                    "\n$readLine"
                                 }
+                                outputChunkFile.append(lineToAppend)
+                                currentFileSizeInBytes += lineToAppend!!.toByteArray(charset).size
+
+                                readLine = bufferedFileReader.readLine()
                             }
                         }
                         numFiles++
