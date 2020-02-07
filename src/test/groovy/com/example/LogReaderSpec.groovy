@@ -33,9 +33,13 @@ class LogReaderSpec extends Specification {
         def logDir = 'src/test/resources/biggerTemp'
 
         when: 'partition the files in chunks'
-        new LogReader().partitionInChunks(logDir, 'src/test/resources/resultChunks')
+        def outputDirString = 'src/test/resources/resultChunks'
+        def outputDir = new File(outputDirString)
+        outputDir.mkdir()
+        new LogReader().partitionInChunks(logDir, outputDirString)
 
         then: 'The output contains chunk files'
-        true
+        outputDir.listFiles().size() > 3
+        outputDir.deleteDir()
     }
 }

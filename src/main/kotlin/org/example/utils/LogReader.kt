@@ -4,7 +4,7 @@ import java.io.*
 
 
 class LogReader {
-    private fun readFilesAndWriteToStream(directory: String, outputStream: OutputStream) {
+    fun readFilesAndWriteToStream(directory: String, outputStream: OutputStream) {
         val printWriter = PrintWriter(outputStream)
         printWriter.use {
             File(directory).walk()
@@ -16,7 +16,7 @@ class LogReader {
         }
     }
 
-    private fun partitionInChunks(inputDirectory: String, outputDirectory: String) {
+    fun partitionInChunks(inputDirectory: String, outputDirectory: String) {
         val charset = Charsets.UTF_8
         val maxFileSizeInBytes = 3000
 
@@ -35,13 +35,13 @@ class LogReader {
                         var currentFileSizeInBytes = 0
                         outputChunkFile.use {
                             while (currentFileSizeInBytes < maxFileSizeInBytes && readLine != null) {
-                                var lineToAppend: String = if (currentFileSizeInBytes == 0) {
+                                val lineToAppend: String = if (currentFileSizeInBytes == 0) {
                                     readLine!!
                                 } else {
                                     "\n$readLine"
                                 }
                                 outputChunkFile.append(lineToAppend)
-                                currentFileSizeInBytes += lineToAppend!!.toByteArray(charset).size
+                                currentFileSizeInBytes += lineToAppend.toByteArray(charset).size
 
                                 readLine = bufferedFileReader.readLine()
                             }
@@ -51,4 +51,5 @@ class LogReader {
                 }
             }
     }
+
 }
