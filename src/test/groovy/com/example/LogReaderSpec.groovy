@@ -13,7 +13,7 @@ class LogReaderSpec extends Specification {
 
     def 'Merging two small log files'() {
         given: 'Directory containing two log files'
-        def logDir = "src/test/resources/temp"
+        def logDir = 'src/test/resources/temp'
 
         when: 'Reading the files'
 
@@ -26,5 +26,16 @@ class LogReaderSpec extends Specification {
 
         then: 'The output contains the contents of two files sorted by timestamp'
         new File('src/test/resources/expected/output1.log').text == outputFile.text
+    }
+
+    def 'Partition files in chunks'() {
+        given: 'Directory containing two log files'
+        def logDir = 'src/test/resources/biggerTemp'
+
+        when: 'partition the files in chunks'
+        new LogReader().partitionInChunks(logDir, 'src/test/resources/resultChunks')
+
+        then: 'The output contains chunk files'
+        true
     }
 }
