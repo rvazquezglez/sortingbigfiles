@@ -1,6 +1,8 @@
 package org.example.utils
 
 import java.io.*
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 class LogReader {
@@ -50,6 +52,14 @@ class LogReader {
                     }
                 }
             }
+    }
+
+    companion object {
+        fun sortLines(lines: List<String>): List<String> = lines.sortedBy { getDateFromLine(it) }
+
+
+        private fun getDateFromLine(line: String): LocalDateTime =
+            LocalDateTime.parse(line.substring(0, 19), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     }
 
 }
