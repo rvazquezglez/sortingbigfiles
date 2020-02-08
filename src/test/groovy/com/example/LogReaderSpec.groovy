@@ -7,15 +7,13 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class LogReaderSpec extends Specification {
-    def outputFileDir = 'src/test/resources/result/output.log'
-
-    def 'Merging two small log files'() {
+    def 'Merging/sorting two small log files'() {
         given: 'Directory containing two log files'
         def logDir = 'src/test/resources/temp'
 
         when: 'Reading the files'
 
-        def outputFile = new File(outputFileDir)
+        def outputFile = new File('src/test/resources/result/output.log')
         outputFile.createNewFile()
         outputFile.withOutputStream { os ->
             new LogReader().readFilesAndWriteToStream(logDir, os)
@@ -46,7 +44,7 @@ class LogReaderSpec extends Specification {
         given: 'file with unsorted entries'
         def fileUnsorted = 'src/test/resources/unsorted/first_unsorted.log'
         when: 'Sorting'
-        def sortedLines = new LogReader.Companion().sortLines(new File(fileUnsorted).readLines())
+        def sortedLines = new LogReader.Companion().sortLinesByDate(new File(fileUnsorted).readLines())
         def fileSortedDir = 'src/test/resources/biggerTemp/first_sorted.log'
         def fileSorted = new File(fileSortedDir)
         fileSorted.withWriterAppend { writer ->
@@ -66,7 +64,29 @@ class LogReaderSpec extends Specification {
         fileSorted.delete()
     }
 
-    private LocalDateTime getDate(String line) {
+    def 'Merging already sorted files'() {
+        given: 'Directory containing three log files'
+        def logDir = 'src/test/resources/biggerTemp'
+
+        when: 'Reading the files'
+
+        def outputFile = new File('src/test/resources/result/output.log')
+        outputFile.createNewFile()
+        outputFile.withOutputStream { os ->
+            new LogReader().mergeFiles(logDir, os)
+        }
+
+
+        then: 'The output contains the contents of three files sorted by timestamp'
+        def sortedLinesOutput = outputFile.readLines()
+        [sortedLinesOutput.dropRight(1), sortedLinesOutput.drop(1)].transpose().every { String a, String b ->
+            getDate(a) <= getDate(b)
+        }
+        outputFile.delete()
+    }
+
+
+    private static LocalDateTime getDate(String line) {
         return LocalDateTime.parse(line.substring(0, 19), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     }
 }
