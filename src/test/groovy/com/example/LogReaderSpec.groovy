@@ -2,32 +2,49 @@ package com.example
 
 import org.example.utils.LogReader
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class LogReaderSpec extends Specification {
-    def 'Merging/sorting two small log files'() {
-        given: 'Directory containing two log files'
-        def logDir = 'src/test/resources/temp'
+
+    def 'Printing to System.out'() {
+        given: 'A directory containing log files'
+        def inputDir = 'src/test/resources/biggerUnsorted'
 
         when: 'Reading the files'
+        new LogReader().readFilesAndWriteToStream(inputDir, System.out)
 
-        def outputFile = new File('src/test/resources/result/output.log')
-        outputFile.createNewFile()
-        outputFile.withOutputStream { os ->
-            new LogReader().readFilesAndWriteToStream(logDir, os)
+        then: 'Check the console'
+        true
+    }
+
+    @Unroll
+    def 'Merging/sorting #inputDir log files'() {
+        given: 'A directory containing log files'
+        inputDir
+
+        when: 'Reading the files'
+        def resultOutputFile = new File('src/test/resources/result/output.log')
+        resultOutputFile.createNewFile()
+        resultOutputFile.withOutputStream { os ->
+            new LogReader().readFilesAndWriteToStream(inputDir, os)
         }
 
+        then: 'The output contains the contents of all files sorted by timestamp'
+        new File(expectedOutput).text == resultOutputFile.text
+        resultOutputFile.delete()
 
-        then: 'The output contains the contents of two files sorted by timestamp'
-        new File('src/test/resources/expected/output1.log').text == outputFile.text
-        outputFile.delete()
+        where:
+        inputDir                            | expectedOutput
+        'src/test/resources/temp'           | 'src/test/resources/expected/output1.log'
+        'src/test/resources/biggerUnsorted' | 'src/test/resources/expected/output2.log'
     }
 
     def 'Partition files in chunks'() {
         given: 'Directory containing two log files'
-        def logDir = 'src/test/resources/biggerTemp'
+        def logDir = 'src/test/resources/biggerSorted'
 
         when: 'partition the files in chunks'
         def outputDirString = 'src/test/resources/resultChunks'
@@ -42,10 +59,10 @@ class LogReaderSpec extends Specification {
 
     def 'Sort lines by date'() {
         given: 'file with unsorted entries'
-        def fileUnsorted = 'src/test/resources/unsorted/first_unsorted.log'
+        def fileUnsorted = 'src/test/resources/biggerUnsorted/first_unsorted.log'
         when: 'Sorting'
         def sortedLines = new LogReader.Companion().sortLinesByDate(new File(fileUnsorted).readLines())
-        def fileSortedDir = 'src/test/resources/biggerTemp/first_sorted.log'
+        def fileSortedDir = 'src/test/resources/biggerSorted/first_sorted.log'
         def fileSorted = new File(fileSortedDir)
         fileSorted.withWriterAppend { writer ->
             sortedLines.eachWithIndex { line, index ->
@@ -64,9 +81,9 @@ class LogReaderSpec extends Specification {
         fileSorted.delete()
     }
 
-    def 'Merging already sorted files'() {
+    def 'Merge already sorted files'() {
         given: 'Directory containing three log files'
-        def logDir = 'src/test/resources/biggerTemp'
+        def logDir = 'src/test/resources/biggerSorted'
 
         when: 'Reading the files'
 
