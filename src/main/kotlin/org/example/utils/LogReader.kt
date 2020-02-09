@@ -75,24 +75,24 @@ class LogReader {
             val mergeBufferedReaders = ArrayList<BufferedReader>()
             val fileEntries = ArrayList<String?>()
 
-            BufferedWriter(OutputStreamWriter(outputStream)).use { bufferedWriter ->
-                var someFileStillHasEntries = false
-                File(inputDirectory).walk()
-                    .filter { it.isFile }
-                    .forEach {
-                        val logReader = BufferedReader(FileReader(it))
-                        // get the first log entry
-                        val line = logReader.readLine()
-                        if (line != null) {
-                            fileEntries.add(line)
-                            mergeBufferedReaders.add(logReader)
-                            someFileStillHasEntries = true
-                        } else {
-                            // there are no lines, the reader won't be used anymore
-                            logReader.close()
-                        }
+            var someFileStillHasEntries = false
+            File(inputDirectory).walk()
+                .filter { it.isFile }
+                .forEach {
+                    val logReader = BufferedReader(FileReader(it))
+                    // get the first log entry
+                    val line = logReader.readLine()
+                    if (line != null) {
+                        fileEntries.add(line)
+                        mergeBufferedReaders.add(logReader)
+                        someFileStillHasEntries = true
+                    } else {
+                        // there are no lines, the reader won't be used anymore
+                        logReader.close()
                     }
+                }
 
+            BufferedWriter(OutputStreamWriter(outputStream)).use { bufferedWriter ->
                 while (someFileStillHasEntries) {
                     val (minIndex, min) = fileEntries.withIndex()
                         .filter { (_, logEntry) -> logEntry != null }
