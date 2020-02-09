@@ -35,10 +35,6 @@ class LogReader {
                 bufferedFileReader.use {
                     var readLine: String? = bufferedFileReader.readLine()
                     while (readLine != null) {
-                        val outputChunkFile = OutputStreamWriter(
-                            FileOutputStream("$outputDirectory/output_chunk_$numFiles.log"),
-                            charset
-                        )
                         var currentFileSizeInBytes = 0
                         val helperList = ArrayList<String>()
                         while (currentFileSizeInBytes < maxFileSizeInBytes && readLine != null) {
@@ -47,7 +43,10 @@ class LogReader {
                             readLine = bufferedFileReader.readLine()
                         }
 
-                        outputChunkFile.use {
+                        OutputStreamWriter(
+                            FileOutputStream("$outputDirectory/output_chunk_$numFiles.log"),
+                            charset
+                        ).use { outputChunkFile ->
                             sortLinesByDate(helperList).forEachIndexed { lineNumber, lineContent ->
                                 val lineToAppend = if (lineNumber == 0) {
                                     lineContent
@@ -65,7 +64,7 @@ class LogReader {
     }
 
     /**
-     * Merge all the files from the input directory into one OutputStream, ordering the rows.
+     * Merge all the files from the input directory into one OutputStream, ordering the log entries.
      * Assumption: the files in input directory are already sorted.
      *
      * @param inputDirectory the directory containing the files to be merged
@@ -74,61 +73,40 @@ class LogReader {
     fun mergeFiles(inputDirectory: String, outputStream: OutputStream) {
         try {
             val mergeBufferedReaders = ArrayList<BufferedReader>()
-            val fileRows = ArrayList<String?>()
-            val bufferedWriter = BufferedWriter(OutputStreamWriter(outputStream))
-            bufferedWriter.use {
-                var someFileStillHasRows = false
+            val fileEntries = ArrayList<String?>()
+
+            BufferedWriter(OutputStreamWriter(outputStream)).use { bufferedWriter ->
+                var someFileStillHasEntries = false
                 File(inputDirectory).walk()
                     .filter { it.isFile }
                     .forEach {
-                        val fileReader = BufferedReader(FileReader(it))
-                        mergeBufferedReaders.add(fileReader)
-                        // get the first row
-                        val line = fileReader.readLine()
+                        val logReader = BufferedReader(FileReader(it))
+                        // get the first log entry
+                        val line = logReader.readLine()
                         if (line != null) {
-                            fileRows.add(line)
-                            someFileStillHasRows = true
-                        }
-                    }
-
-                var row: String?
-                while (someFileStillHasRows) {
-                    var min: LocalDateTime?
-                    var minIndex: Int
-                    row = fileRows[0]
-                    if (row != null) {
-                        min = getDateFromLine(row)
-                        minIndex = 0
-                    } else {
-                        min = null
-                        minIndex = -1
-                    }
-
-                    // check which one is min
-                    fileRows.forEachIndexed { i, fileRow ->
-                        if (min != null) {
-                            if (fileRow != null && getDateFromLine(fileRow) < min) {
-                                minIndex = i
-                                min = getDateFromLine(fileRow)
-                            }
+                            fileEntries.add(line)
+                            mergeBufferedReaders.add(logReader)
+                            someFileStillHasEntries = true
                         } else {
-                            if (fileRow != null) {
-                                min = getDateFromLine(fileRow)
-                                minIndex = i
-                            }
+                            // there are no lines, the reader won't be used anymore
+                            logReader.close()
                         }
                     }
+
+                while (someFileStillHasEntries) {
+                    val (minIndex, min) = fileEntries.withIndex()
+                        .filter { (_, logEntry) -> logEntry != null }
+                        .minBy { (_, logEntry) -> getDateFromLine(logEntry!!) }
+                        ?: IndexedValue(-1, null)
 
                     if (minIndex >= 0) {
-                        // write to the sorted file
-                        bufferedWriter.appendln(fileRows[minIndex])
-                        // get another row from the file that had the min
-                        fileRows[minIndex] = mergeBufferedReaders[minIndex].readLine()
+                        bufferedWriter.appendln(min)
 
-                        // check if one still has rows
-                        someFileStillHasRows = fileRows.any { it != null }
+                        fileEntries[minIndex] = mergeBufferedReaders[minIndex].readLine()
+
+                        someFileStillHasEntries = fileEntries.any { it != null }
                     } else {
-                        someFileStillHasRows = false
+                        someFileStillHasEntries = false
                     }
                 }
             }
